@@ -54,6 +54,17 @@ def create_run_against_run(client, run: Run) -> Run:
 @pytest.mark.sdk_test
 @pytest.mark.e2etest
 class TestFlowRun:
+    # run this with `pytest --record-mode=once`
+    # the cassette (recording) will be saved to
+    # "tests/sdk_cli_test/e2etests/cassettes/test_flow_run/TestFlowRun.test_naive_request.yaml"
+    @pytest.mark.vcr
+    def test_naive_request(self) -> None:
+        import requests
+
+        requests.get("https://www.google.com")
+
+    # while this one will not generate any recording
+    @pytest.mark.vcr
     def test_basic_flow_bulk_run(self, azure_open_ai_connection: AzureOpenAIConnection, pf) -> None:
         data_path = f"{DATAS_DIR}/webClassification3.jsonl"
 
