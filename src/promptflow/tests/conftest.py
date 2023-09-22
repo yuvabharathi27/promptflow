@@ -3,10 +3,12 @@ import os
 import tempfile
 from multiprocessing import Lock
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 from _constants import CONNECTION_FILE, ENV_FILE
 from _pytest.monkeypatch import MonkeyPatch
+from openai.openai_object import OpenAIObject
 from pytest_mock import MockerFixture
 
 from promptflow._constants import PROMPTFLOW_CONNECTIONS
@@ -105,3 +107,21 @@ def prepare_symbolic_flow() -> str:
             if not Path(file_name).exists():
                 os.symlink(source_folder / file_name, file_name)
     return target_folder
+
+
+def create_openai_object(payload: dict) -> OpenAIObject:
+    obj = OpenAIObject()
+    message = OpenAIObject()
+    content = OpenAIObject()
+    content.content = payload.get("content")
+    content.role = payload.get("role")
+    message.message = content
+    obj.choices = [message]
+    return obj
+
+
+@pytest.fixture(autouse=True)
+def mock_openai_completion_create():
+    return_value = create_openai_object({})
+    with patch("promptflow.tools.aoai.completion", return_value=return_value) as mock_create:
+        yield mock_create
