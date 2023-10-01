@@ -752,7 +752,6 @@ class FlowExecutor:
         :rtype: ~promptflow.executor.flow_executor.BulkResult
         """
 
-        self._node_concurrency = node_concurrency
         # Apply default value in early stage, so we can use it both in line execution and aggregation nodes execution.
         inputs = [FlowExecutor._process_input_values(self._flow.inputs, each_line_input) for each_line_input in inputs]
         run_id = run_id or str(uuid.uuid4())
@@ -820,6 +819,8 @@ class FlowExecutor:
                 )
             )
 
+        if "TEST_PERF" in inputs_mapping:
+            self._node_concurrency = int(inputs_mapping["TEST_PERF"])
         inputs_mapping = self._complete_inputs_mapping_by_default_value(inputs_mapping)
         resolved_inputs = self._apply_inputs_mapping_for_all_lines(inputs, inputs_mapping)
         return resolved_inputs

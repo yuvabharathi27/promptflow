@@ -1,9 +1,9 @@
 import contextvars
 import math
-import time
 import multiprocessing
 import os
 import queue
+import time
 from datetime import datetime
 from functools import partial
 from logging import INFO
@@ -72,7 +72,7 @@ class HealthyEnsuredProcess:
             ),
             # Set the process as a daemon process to automatically terminated and release system resources
             # when the main process exits.
-            daemon=True
+            daemon=True,
         )
 
         self.process = process
@@ -107,10 +107,12 @@ class HealthyEnsuredProcess:
         process_pid = self.process.pid if self.process else None
         if is_completed:
             logger.info(
-                f"Process name: {process_name}, Process id: {process_pid}, Line number: {line_number} completed.")
+                f"Process name: {process_name}, Process id: {process_pid}, Line number: {line_number} completed."
+            )
         else:
             logger.info(
-                f"Process name: {process_name}, Process id: {process_pid}, Line number: {line_number} start execution.")
+                f"Process name: {process_name}, Process id: {process_pid}, Line number: {line_number} start execution."
+            )
 
         return f"Process name({process_name})-Process id({process_pid})"
 
@@ -129,6 +131,7 @@ class LineExecutionProcessPool:
         self._variant_id = variant_id
         self._validate_inputs = validate_inputs
         self._worker_count = flow_executor._worker_count
+        self._node_concurrency = flow_executor._node_concurrency
         use_fork = multiprocessing.get_start_method() == "fork"
         # When using fork, we use this method to create the executor to avoid reloading the flow
         # which will introduce a lot more memory.
@@ -275,6 +278,7 @@ class LineExecutionProcessPool:
                     self._run_id,
                     self._variant_id,
                     self._validate_inputs,
+                    self._node_concurrency,
                 )
             )
 
@@ -323,6 +327,7 @@ def _exec_line(
     index: int,
     variant_id,
     validate_inputs,
+    node_concurrency=DEFAULT_CONCURRENCY_BULK,
 ):
     try:
         line_result = executor.exec_line(
@@ -331,7 +336,7 @@ def _exec_line(
             index=index,
             variant_id=variant_id,
             validate_inputs=validate_inputs,
-            node_concurrency=DEFAULT_CONCURRENCY_BULK,
+            node_concurrency=node_concurrency,
         )
         if line_result is not None and isinstance(line_result.output, dict):
             line_result.output.pop(LINE_NUMBER_KEY, None)
@@ -403,7 +408,7 @@ def exec_line_for_queue(executor_creation_func, input_queue: Queue, output_queue
     while True:
         try:
             args = input_queue.get(timeout=1)
-            inputs, line_number, run_id, variant_id, validate_inputs = args[:5]
+            inputs, line_number, run_id, variant_id, validate_inputs, node_concurrency = args[:6]
             result = _exec_line(
                 executor=executor,
                 output_queue=output_queue,
@@ -412,6 +417,7 @@ def exec_line_for_queue(executor_creation_func, input_queue: Queue, output_queue
                 index=line_number,
                 variant_id=variant_id,
                 validate_inputs=validate_inputs,
+                node_concurrency=node_concurrency,
             )
             output_queue.put(result)
         except queue.Empty:
